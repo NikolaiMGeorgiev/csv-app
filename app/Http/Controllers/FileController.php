@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Jobs\ProcessCSV;
 use App\Models\Products;
 use App\Models\Uploads;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller {
@@ -47,8 +49,13 @@ class FileController extends Controller {
     public function products(Request $request) {
         $userData = $request->user();
         $products = Products::where('users_id', $userData['id'])
-            ->select('id', 'name', 'description', 'price')
             ->get();
+
+        if (!empty($products) && !$request->user()->can('view', $products[0])) {
+            return response()->json([
+                'message' => 'Data not found',
+            ], 404);
+        }
 
         return response()->json([
             'products' => $products
@@ -56,19 +63,16 @@ class FileController extends Controller {
     }
 
     public function status(Request $request, $uploadId) {
-        $userData = $request->user();
-        $products = Uploads::where('users_id', $userData['id'])
-            ->where('id', $uploadId)
-            ->select('status')
+        $products = Uploads::where('id', $uploadId)
             ->first();
 
-        if (empty($products)) {
+        if (empty($products) || !$request->user()->can('view', $products)) {
             return response()->json([
-                'message' => 'Data not found'
+                'message' => 'Data not found',
             ], 404);
         } else {
             return response()->json([
-                'status' => $products->status
+                'status' => $products->status,
             ]);
         }
     }

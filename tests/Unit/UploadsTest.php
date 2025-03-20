@@ -88,14 +88,11 @@ class UploadsTest extends TestCase {
         $uploads = Mockery::mock('overload:' . Uploads::class);
         $uploads->shouldReceive('where')
             ->andReturnSelf();
-        $uploads->shouldReceive('select')
-            ->once()
-            ->andReturnSelf();
         $uploads->shouldReceive('first')
             ->once()
-            ->andReturn((object) ['status' => 'completed']);
+            ->andReturn((object) ['id' => '111', 'status' => 'completed', 'users_id' => $user->id]);
     
-        $response = $this->get('/api/status/12');
+        $response = $this->get('/api/status/111');
         $response->assertStatus(200);
         $this->assertEquals('completed', $response['status']);
     }
