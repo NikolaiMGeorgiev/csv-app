@@ -3,11 +3,12 @@
 namespace App\Jobs;
 
 use App\Mail\ProcessingResult;
+use App\Models\Products;
+use App\Models\Uploads;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -42,11 +43,8 @@ class ProcessCSV implements ShouldQueue
      * Execute the job.
      */
     public function handle(): void {
-        $uploadsDBRow = DB::table('uploads')
-            ->where([
-                ['users_id', '=', $this->userId],
-                ['file_path', '=', $this->filename]
-            ]);
+        $uploadsDBRow = Uploads::where('users_id', $this->userId)
+            ->where('file_path', $this->filename);
         $uploadsDBRow->update([
             'status' => 'processing',
             'updated_at' => now()
@@ -64,12 +62,17 @@ class ProcessCSV implements ShouldQueue
         }
 
         foreach ($productsData as $productData) {
-            DB::table('products')->insert([
+            $dbProductData = [
                 'name' => $productData['name'],
                 'description' => $productData['description'],
                 'price' => $productData['price'],
                 'users_id' => $this->userId
-            ]);
+            ];
+            $product = new Products($dbProductData);
+            if(!$product->save()) {
+                $jsonProductData = json_encode($dbProductData);
+                Log::error("Failed to save {$jsonProductData} from file {$this->filename}");
+            }
         }
 
         if ($this->fileIsFullyRead) {

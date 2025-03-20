@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Jobs\ProcessCSV;
-use Illuminate\Support\Facades\DB;
+use App\Models\Products;
+use App\Models\Uploads;
 use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller {
@@ -21,14 +22,21 @@ class FileController extends Controller {
         
         $userId = $request->user()['id'];
         $file = $request->file('file');
-        DB::table('uploads')->insert([
+
+        $upload = new Uploads([
             'users_id' => $userId,
             'file_path' => $file->hashName(),
             'status' => 'pending',
             'created_at' => now()
         ]);
-        $filename = $file->store();
+        if(!$upload->save()) {
+            return response()->json([
+                'message' => 'Error while saving uploads data'
+            ], 500);
+        }
 
+        $filename = $file->store();
+        
         ProcessCSV::dispatch($filename, $userId, $request->user()['email'], 0);
     
         return response()->json([
@@ -38,10 +46,9 @@ class FileController extends Controller {
 
     public function products(Request $request) {
         $userData = $request->user();
-        $products = DB::table('products')
-            ->where('users_id', $userData['id'])
+        $products = Products::where('users_id', $userData['id'])
             ->select('id', 'name', 'description', 'price')
-            ->paginate(10);
+            ->get();
 
         return response()->json([
             'products' => $products
@@ -50,8 +57,7 @@ class FileController extends Controller {
 
     public function status(Request $request, $uploadId) {
         $userData = $request->user();
-        $products = DB::table('uploads')
-            ->where('users_id', $userData['id'])
+        $products = Uploads::where('users_id', $userData['id'])
             ->where('id', $uploadId)
             ->select('status')
             ->first();

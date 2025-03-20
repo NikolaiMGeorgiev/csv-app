@@ -2,13 +2,13 @@
 
 namespace App\Mail;
 
+use App\Models\Uploads;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 
 class ProcessingResult extends Mailable
 {
@@ -22,17 +22,11 @@ class ProcessingResult extends Mailable
      * Create a new message instance.
      */
     public function __construct($status, $filename, $userId) {
-        $uploadData = DB::table('uploads')
-            ->where([
-                ['users_id', '=', $userId],
-                ['file_path', '=', $filename]
-            ])
+        $uploadData = Uploads::where('users_id', $userId)
+            ->where('file_path', $filename)
             ->select('id')
             ->first();
-        $userData = DB::table('users')
-            ->where([
-                ['id', '=', $userId]
-            ])
+        $userData = User::where('id', $userId)
             ->select('name')
             ->first();
         $this->status = $status;
